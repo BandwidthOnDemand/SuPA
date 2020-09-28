@@ -33,7 +33,6 @@ from click import Context, Option
 from tabulate import tabulate
 
 from supa import init_app, settings
-from supa.connection.provider.server import ConnectionProviderService
 from supa.grpc_nsi import connection_provider_pb2_grpc
 from supa.util.vlan import VlanRanges
 
@@ -180,6 +179,9 @@ def serve(
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=settings.grpc_server_max_workers))
     log = logger.bind(grpc_server_max_workers=settings.grpc_server_max_workers)
+
+    # Safe to import, now that `init_app()` has been called
+    from supa.connection.provider.server import ConnectionProviderService
 
     connection_provider_pb2_grpc.add_ConnectionProviderServicer_to_server(ConnectionProviderService(), server)
     server.add_insecure_port(settings.grpc_server_insecure_address_port)

@@ -26,6 +26,12 @@ supa.db
 .. automodule:: supa.db
    :members:
 
+supa.job
+--------
+
+.. automodule:: supa.job
+   :members:
+
 supa.connection.fsm
 -------------------
 
