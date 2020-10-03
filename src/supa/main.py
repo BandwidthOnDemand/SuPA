@@ -146,9 +146,7 @@ def cli() -> None:
     type=int,
     help="Maximum number of workers to execute scheduler jobs.",
 )
-@click.option(
-    "--domain-name", default=settings.domain_name, type=str, help="Name of the domain SuPA is responsible for."
-)
+@click.option("--domain", default=settings.domain, type=str, help="Name of the domain SuPA is responsible for.")
 @click.option(
     "--network-type", default=settings.network_type, type=str, help="Name of the network SuPA is responsible for."
 )
@@ -162,7 +160,7 @@ def serve(
     grpc_server_max_workers: int,
     grpc_server_insecure_address_port: str,
     scheduler_max_workers: int,
-    domain_name: str,
+    domain: str,
     network_type: str,
     grpc_client_insecure_address_port: str,
 ) -> None:
@@ -171,7 +169,7 @@ def serve(
     settings.grpc_server_max_workers = grpc_server_max_workers
     settings.grpc_server_insecure_address_port = grpc_server_insecure_address_port
     settings.scheduler_max_workers = scheduler_max_workers
-    settings.domain_name = domain_name
+    settings.domain = domain
     settings.network_type = network_type
     settings.grpc_client_insecure_address_port = grpc_client_insecure_address_port
 

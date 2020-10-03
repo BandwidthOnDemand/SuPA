@@ -173,7 +173,7 @@ class Settings(BaseSettings):
     # be at least as many as the gRPC ones. We include a couple extra for non-gRPC initiated jobs.
     scheduler_max_workers: int = grpc_server_max_workers + 4
 
-    domain_name: str = "netherlight.net:2013"
+    domain: str = "netherlight.net:2013"
     network_type: str = "production8"
 
     class Config:  # noqa: D106
