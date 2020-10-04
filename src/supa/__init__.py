@@ -175,6 +175,7 @@ class Settings(BaseSettings):
 
     domain: str = "netherlight.net:2013"
     network_type: str = "production8"
+    nsa_id: str = "urn:ogf:network:netherlight.net:2013:nsa:supa"
 
     class Config:  # noqa: D106
         case_sensitive = True
