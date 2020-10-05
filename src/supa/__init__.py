@@ -48,6 +48,8 @@ from pydantic import BaseSettings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+from supa.db.model import Base
+
 timestamper = structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S")
 pre_chain = [
     # Add the log level, name and a timestamp to the event_dict if the log entry
@@ -292,7 +294,7 @@ class UnconfiguredScheduler(BaseScheduler):
     only to overwrite it with the real thing after command line options have been processed.
     """
 
-    exc_msg = """Scheduler has not yet been initialized. Call `main.init_app` first. Only then (locally) import main.scheduler.
+    exc_msg = """Scheduler has not yet been initialized. Call `main.init_app` first. Only then (locally) import `scheduler`.
 
 IMPORTANT
 ==========
@@ -383,11 +385,11 @@ def init_app(with_scheduler: bool = True) -> None:
         )
     engine = create_engine(f"sqlite:///{database_file}")
 
-    from supa import db
+    import supa.db.session
 
-    db.Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine)
-    db.Session = scoped_session(session_factory)
+    supa.db.session.Session = scoped_session(session_factory)
 
     if with_scheduler:
         # Initialize and start the scheduler

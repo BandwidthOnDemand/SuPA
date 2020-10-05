@@ -10,35 +10,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Setup the DB, configure SQLAlchemy and define the schema.
-
-Due to SuPA's modest DB requirements we have chosen to use `SQLite <https://sqlite.org/index.html>`_.
-It is very easy to use,
-does not require a full client/server setup,
-and it is wickedly fast.
-There are some limitations with regards to concurrency,
-but those will not affect SuPA with its low DB WRITE needs;
-especially when configured with the :attr:`~supa.JournalMode.WAL` journal mode.
-
-Usage
-=====
-
-.. warning:: Due to how this application initializes itself,
-             one should always **locally** import classes and attributes from this module.
-
-When classes and attributes from this module are imported at the top of other modules
-some of them might not yet have been correctly initialized.
-Once the initialization has been completed,
-these already imported classes and attributed will still refer to the old uninitialized ones.
-Don't worry too much about it;
-you will get an informative error.
-But just to be on the safe side,
-always import anything from this module locally!
+"""Define the database models.
 
 Surrogate keys versus natural keys
 ==================================
 
-Looking at the schema definitions
+Looking at the model definitions
 you'll find that we have used `natural keys <https://en.wikipedia.org/wiki/Natural_key>`_ wherever possible.
 Though no too common these days,
 with the prevalent use of ORMs
@@ -69,16 +46,12 @@ That is the reason that we have modelled connection IDs from other NSA's
 (``ag_connection_id``, ``upa_connection_id``)
 as ``TEXT``.
 Within SuPA we have decided to use ``UUID``'s for our ``connection_id``'s.
-
 """  # noqa: E501 B950
 import enum
-import sqlite3
 import uuid
-from contextlib import closing, contextmanager
 from datetime import datetime, timezone
-from typing import Any, Iterator, Optional
+from typing import Any, Optional
 
-import structlog
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -88,57 +61,26 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    Text,
+    TypeDecorator,
     UniqueConstraint,
-    event,
     inspect,
-    orm,
 )
 from sqlalchemy.dialects import sqlite
-from sqlalchemy.engine import Dialect, Engine
+from sqlalchemy.engine import Dialect
 from sqlalchemy.exc import DontWrapMixin
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import relationship, scoped_session
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm.state import InstanceState
-from sqlalchemy.pool import _ConnectionRecord
-from sqlalchemy.types import Text, TypeDecorator
 
-from supa import settings
 from supa.connection.fsm import LifecycleStateMachine, ProvisioningStateMachine, ReservationStateMachine
 from supa.util import nsi
 from supa.util.timestamp import NO_END_DATE, current_timestamp
 
-logger = structlog.get_logger(__name__)
 
-
-@event.listens_for(Engine, "connect")  # type: ignore
-def set_sqlite_pragma(dbapi_connection: sqlite3.Connection, connection_record: _ConnectionRecord) -> None:
-    """Configure certain SQLite settings.
-
-    These settings,
-    issued as SQLite `pragmas <https://sqlite.org/pragma.html>`_,
-    need to be configured on each connection.
-    Hence the usage of SQLAlchemy's engine's connect event.
-    """
-    with closing(dbapi_connection.cursor()) as cursor:
-        # https://sqlite.org/pragma.html#pragma_foreign_keys
-        foreign_keys = "ON"
-        log = logger.bind(foreign_keys=foreign_keys)
-        cursor.execute(f"PRAGMA foreign_keys={foreign_keys}")
-
-        # https://sqlite.org/pragma.html#pragma_auto_vacuum
-        auto_vacuum = "INCREMENTAL"
-        log = log.bind(auto_vacuum=auto_vacuum)
-        cursor.execute(f"PRAGMA auto_vacuum={auto_vacuum}")
-
-        # https://sqlite.org/pragma.html#pragma_journal_mode
-        log = log.bind(journal_mode=settings.database_journal_mode.value)
-        cursor.execute(f"PRAGMA journal_mode={settings.database_journal_mode.value}")
-        log.debug("Set default options for SQLite database.")
-
-
-class UUID(TypeDecorator):
-    """Implement SQLAlchemy UUID column type for SQLite databases.
+class Uuid(TypeDecorator):
+    """Implement SQLAlchemy Uuid column type for SQLite databases.
 
     This stores Python :class:`uuid.UUID` types as strings (``CHAR(36)``) in the database.
     We have chosen to store the :meth:`uuid.UUID.__str__` representation directly,
@@ -245,11 +187,11 @@ class Reservation(Base):
     # Although this is not a direct mapping, we have indicated from what parts some these
     # attribute comes from.
 
-    connection_id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    connection_id = Column(Uuid, primary_key=True, default=uuid.uuid4)
 
     # header
     protocol_version = Column(Text, nullable=False)
-    correlation_id = Column(UUID, nullable=False, comment="urn:uid", unique=True)
+    correlation_id = Column(Uuid, nullable=False, comment="urn:uid", unique=True)
     requester_nsa = Column(Text, nullable=False)
     provider_nsa = Column(Text, nullable=False)
     reply_to = Column(Text)
@@ -294,13 +236,13 @@ class Reservation(Base):
     reservation_state = Column(
         Enum(*[s.name for s in ReservationStateMachine.states]),
         nullable=False,
-        default=ReservationStateMachine.ReserveStart.name,
+        default=ReservationStateMachine.ReserveStart.name,  # type: ignore[has-type]
     )
     provisioning_state = Column(Enum(*[s.name for s in ProvisioningStateMachine.states]))
     lifecycle_state = Column(
         Enum(*[s.name for s in LifecycleStateMachine.states]),
         nullable=False,
-        default=LifecycleStateMachine.Created.name,
+        default=LifecycleStateMachine.Created.name,  # type: ignore[has-type]
     )
 
     # another header part
@@ -375,7 +317,7 @@ class PathTrace(Base):
     ag_connection_id = Column(Text, primary_key=True, comment="Aggregator issued connection_id")
 
     connection_id = Column(
-        UUID, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), nullable=False, comment="Our connection_id"
+        Uuid, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), nullable=False, comment="Our connection_id"
     )
 
     reservation = relationship(
@@ -401,7 +343,7 @@ class Path(Base):
 
     __tablename__ = "paths"
 
-    path_id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    path_id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     path_trace_id = Column(Text, nullable=False)
     ag_connection_id = Column(Text, nullable=False)
 
@@ -431,7 +373,7 @@ class Segment(Base):
     segment_id = Column(
         Text, primary_key=True, comment="The NSA identifier for the uPA associated with this path segment"
     )
-    path_id = Column(UUID, ForeignKey(Path.path_id, ondelete="CASCADE"), nullable=False, primary_key=True)
+    path_id = Column(Uuid, ForeignKey(Path.path_id, ondelete="CASCADE"), nullable=False, primary_key=True)
 
     upa_connection_id = Column(Text, nullable=False, comment="Not ours; it's is the connection_id from another uPA")
     order = Column(Integer, nullable=False)
@@ -459,7 +401,7 @@ class Stp(Base):
 
     stp_id = Column(Text, primary_key=True, comment="Assumes fully qualified STP")
     segment_id = Column(Text, nullable=False)
-    path_id = Column(UUID, nullable=False)
+    path_id = Column(Uuid, nullable=False)
     order = Column(Integer, nullable=False)
 
     __table_args__ = (
@@ -476,7 +418,7 @@ class Parameter(Base):
     __tablename__ = "parameters"
 
     connection_id = Column(
-        UUID, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), nullable=False, primary_key=True
+        Uuid, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), nullable=False, primary_key=True
     )
     key = Column(Text, primary_key=True)
     value = Column(Text)
@@ -487,7 +429,7 @@ class Port(Base):
 
     __tablename__ = "ports"
 
-    port_id = Column(UUID, primary_key=True, comment="subscription_id of a port in the Orchestrator")
+    port_id = Column(Uuid, primary_key=True, comment="subscription_id of a port in the Orchestrator")
     name = Column(Text, nullable=False, unique=True, index=True)
     vlans = Column(Text, nullable=False)
     remote_stp = Column(Text, nullable=True)  # not sure if we need this?
@@ -508,7 +450,7 @@ class Connection(Base):
 
     __tablename__ = "connections"
 
-    connection_id = Column(UUID, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), primary_key=True)
+    connection_id = Column(Uuid, ForeignKey(Reservation.connection_id, ondelete="CASCADE"), primary_key=True)
     bandwidth = Column(Integer, nullable=False, comment="Mbps")
 
     # Mind the singular {src,dst}_vlan
@@ -517,12 +459,12 @@ class Connection(Base):
     # We use singular here,
     # as by the time we are creating a Connection a VLAN
     # per port will have been selected.
-    source_port_id = Column(UUID, ForeignKey(Port.port_id), nullable=False)
+    source_port_id = Column(Uuid, ForeignKey(Port.port_id), nullable=False)
     source_vlan = Column(Integer, nullable=False)
-    dest_port_id = Column(UUID, ForeignKey(Port.port_id), nullable=False)
+    dest_port_id = Column(Uuid, ForeignKey(Port.port_id), nullable=False)
     dest_vlan = Column(Integer, nullable=False)
     subscription_id = Column(
-        UUID, nullable=False, unique=True, comment="subscription_id of the lightpath in the Orchestrator"
+        Uuid, nullable=False, unique=True, comment="subscription_id of the lightpath in the Orchestrator"
     )
 
     reservation = relationship(
@@ -539,89 +481,3 @@ class Connection(Base):
         "Port",
         foreign_keys=[dest_port_id],
     )
-
-
-class UnconfiguredSession(scoped_session):
-    """Fail safe fake session class to guard against premature SQLAlchemy session usage.
-
-    SQLAlchemy's engine,
-    and hence session,
-    can only be initialized after all settings have been resolved.
-    This means that we cannot initialize it at the module level.
-    After all,
-    at the time this module is being executed the default settings
-    and those of the env file have been processed,
-    those specified on the commend line might not have been processed.
-    At the same time we want to keep easy access to the :data:`Session` as a module level attribute.
-    So we configure the :data:`Session` with this safe guard class
-    only to overwrite it with the real thing after command line options have been processed.
-    """
-
-    def __init__(self) -> None:  # noqa: D107
-        pass
-
-    def __call__(self, *args: Any, **kwargs: Any) -> orm.Session:
-        """Trap premature ``Session()`` calls and raise an exception."""
-        raise Exception(
-            """DB has not yet been initialized. Call `main.init_app` first. Only then (locally) import main.db.Session.
-
-IMPORTANT
-==========
-Make sure you have processed all the different ways of dealing with application
-configuration before you call `main.init_app`.  The env file (`supa.env`) and
-the environment are handled automatically by the `supa.settings` instance.
-However anything specified on the command line generally needs to be processed
-explicitly in the module `supa.main`.
-"""
-        )
-
-
-Session = UnconfiguredSession()
-"""SQLAlchemy Session for accessing the database.
-
-:data:`Session` can only be used after a call to :func:`main.init_app`.
-That,
-in turn,
-can only be called after all application configuration has been resolved,
-eg. after command line processing.
-:func:`main.init_app` will replace :data:`Session` with a proper SQLAlchemy
-(scoped) ``Session``.
-"""
-
-
-@contextmanager
-def db_session() -> Iterator[scoped_session]:
-    """Context manager for using an SQLAlchemy session.
-
-    It will automatically commit the session upon leaving the context manager.
-    It will rollback the session if an exception occurred while in the context manager.
-    re-raising the exception afterwards.
-
-    Example::
-
-        my_model = MyModel(fu="fu", bar="bar")
-        with db_session() as session:
-            session.add(my_model)
-
-    Raises:
-        Whatever exception that was raised while the context manager was active.
-
-    """
-    # IMPORTANT: Due to how DB initialization happens within this application
-    # we absolutely need to import Session via a local import.
-    # See also: :func:`supa.init_app`
-    from supa.db import Session
-
-    session = None
-    try:
-        session = Session()
-        yield session
-        session.commit()
-    except BaseException:
-        logger.info("An exception occurred while doing DB work. Rolling back.")
-        if session is not None:
-            session.rollback()
-        raise
-    finally:
-        if session is not None:
-            session.close()

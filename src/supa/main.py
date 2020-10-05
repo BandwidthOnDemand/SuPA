@@ -204,7 +204,8 @@ def add(port_id: UUID, name: str, vlans: str, remote_stp: Optional[str], bandwid
     init_app(with_scheduler=False)
 
     # Safe to import, now that `init_app()` has been called
-    from supa.db import Port, db_session
+    from supa.db.model import Port
+    from supa.db.session import db_session
 
     port = Port(
         port_id=port_id,
@@ -225,7 +226,8 @@ def add(port_id: UUID, name: str, vlans: str, remote_stp: Optional[str], bandwid
 def list_cmd(only: Optional[str]) -> None:
     """List Orchestrator ports made available to SuPA."""
     init_app(with_scheduler=False)
-    from supa.db import Port, db_session
+    from supa.db.model import Port
+    from supa.db.session import db_session
 
     with db_session() as session:
         ports = session.query(Port)
@@ -258,7 +260,8 @@ def delete(port_id: Optional[UUID], name: Optional[str]) -> None:
     See the `disable` command.
     """
     init_app(with_scheduler=False)
-    from supa.db import Port, db_session
+    from supa.db.model import Port
+    from supa.db.session import db_session
 
     if port_id is None and name is None:
         click.echo("Please specify either --port-id or --name.", err=True)
@@ -281,7 +284,8 @@ def delete(port_id: Optional[UUID], name: Optional[str]) -> None:
 def _set_enable(port_id: Optional[UUID], name: Optional[str], enabled: bool) -> None:
     """Enable or disable a specific port."""
     init_app(with_scheduler=False)
-    from supa.db import Port, db_session
+    from supa.db.model import Port
+    from supa.db.session import db_session
 
     if port_id is None and name is None:
         click.echo("Please specify either --port-id or --name.", err=True)
