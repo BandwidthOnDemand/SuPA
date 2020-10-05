@@ -329,13 +329,41 @@ class Reservation(Base):
 
     __table_args__ = (CheckConstraint(start_time < end_time),)
 
-    def src_stp(self) -> nsi.Stp:
-        """Return :class:`~supa.util.nsi.STP` instance for src data."""
-        return nsi.Stp(self.src_domain, self.src_network_type, self.src_port, self.src_vlans)
+    def src_stp(self, selected: bool = False) -> nsi.Stp:
+        """Return :class:`~supa.util.nsi.STP` instance for src data.
 
-    def dst_stp(self) -> nsi.Stp:
-        """Return :class:`~supa.util.nsi.STP` instance for dst data."""
-        return nsi.Stp(self.dst_domain, self.dst_network_type, self.dst_port, self.dst_vlans)
+        Depending on where we are in the reservation process,
+        we need to deal with a requested VLAN(s)(ranges),
+        or a selected VLAN.
+        The ``selected`` parameter determines which of the two
+        will be used for the ``labels`` argument to the :class:`~supa.util.nsi.Stp` object.
+
+        Args:
+            selected: if True, use 'selected VLAN` instead of requested VLAN(s)(ranges)
+
+        Returns:
+            :class:`~supa.util.nsi.Stp` object
+        """
+        labels = self.src_selected_vlan if selected else self.src_vlans
+        return nsi.Stp(self.src_domain, self.src_network_type, self.src_port, labels)
+
+    def dst_stp(self, selected: bool = False) -> nsi.Stp:
+        """Return :class:`~supa.util.nsi.STP` instance for dst data.
+
+        Depending on where we are in the reservation process,
+        we need to deal with a requested VLAN(s)(ranges),
+        or a selected VLAN.
+        The ``selected`` parameter determines which of the two
+        will be used for the ``labels`` argument to the :class:`~supa.util.nsi.Stp` object.
+
+        Args:
+            selected: if True, use 'selected VLAN` instead of requested VLAN(s)(ranges)
+
+        Returns:
+            :class:`~supa.util.nsi.Stp` object
+        """
+        labels = self.dst_selected_vlan if selected else self.dst_vlans
+        return nsi.Stp(self.dst_domain, self.dst_network_type, self.dst_port, labels)
 
 
 class PathTrace(Base):
