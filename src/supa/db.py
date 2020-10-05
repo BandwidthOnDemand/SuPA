@@ -248,6 +248,7 @@ class Reservation(Base):
     connection_id = Column(UUID, primary_key=True, default=uuid.uuid4)
 
     # header
+    protocol_version = Column(Text, nullable=False)
     correlation_id = Column(UUID, nullable=False, comment="urn:uid", unique=True)
     requester_nsa = Column(Text, nullable=False)
     provider_nsa = Column(Text, nullable=False)
