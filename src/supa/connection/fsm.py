@@ -44,23 +44,23 @@ class ReservationStateMachine(StateMachine):
     .. image:: /images/ReservationStateMachine.png
     """
 
-    Start = State("Start", initial=True)
-    Checking = State("Checking")
-    Held = State("Held")
-    Committing = State("Committing")
-    Failed = State("Failed")
-    Timeout = State("Timeout")
-    Aborting = State("Aborting")
+    ReserveStart = State("RESERVE_START", initial=True)
+    ReserveChecking = State("RESERVE_CHECKING")
+    ReserveHeld = State("RESERVE_HELD")
+    ReserveCommitting = State("RESERVE_COMMITTING")
+    ReserveFailed = State("RESERVE_FAILED")
+    ReserveTimeout = State("RESERVE_TIMEOUT")
+    ReserveAborting = State("RESERVE_ABORTING")
 
-    reserve_request = Start.to(Checking)
-    reserve_confirmed = Checking.to(Held)
-    reserve_failed = Checking.to(Failed)
-    reserve_abort_request = Failed.to(Aborting) | Held.to(Aborting)
-    reserve_abort_confirmed = Aborting.to(Start)
-    reserve_timeout_notification = Held.to(Timeout)
-    reserve_commit_request = Held.to(Committing) | Timeout.to(Committing)
-    reserve_commit_confirmed = Committing.to(Start)
-    reserve_commit_failed = Committing.to(Start)
+    reserve_request = ReserveStart.to(ReserveChecking)
+    reserve_confirmed = ReserveChecking.to(ReserveHeld)
+    reserve_failed = ReserveChecking.to(ReserveFailed)
+    reserve_abort_request = ReserveFailed.to(ReserveAborting) | ReserveHeld.to(ReserveAborting)
+    reserve_abort_confirmed = ReserveAborting.to(ReserveStart)
+    reserve_timeout_notification = ReserveHeld.to(ReserveTimeout)
+    reserve_commit_request = ReserveHeld.to(ReserveCommitting) | ReserveTimeout.to(ReserveCommitting)
+    reserve_commit_confirmed = ReserveCommitting.to(ReserveStart)
+    reserve_commit_failed = ReserveCommitting.to(ReserveStart)
 
 
 class ProvisioningStateMachine(StateMachine):
@@ -69,10 +69,10 @@ class ProvisioningStateMachine(StateMachine):
     .. image:: /images/ProvisioningStateMachine.png
     """
 
-    Released = State("Released", initial=True)
-    Provisioning = State("Provisioning")
-    Provisioned = State("Provisioned")
-    Releasing = State("Releasing")
+    Released = State("RELEASED", initial=True)
+    Provisioning = State("PROVISIONING")
+    Provisioned = State("PROVISIONED")
+    Releasing = State("RELEASING")
 
     provision_request = Released.to(Provisioning)
     provision_confirmed = Provisioning.to(Provisioned)
@@ -86,11 +86,11 @@ class LifecycleStateMachine(StateMachine):
     .. image:: /images/LifecycleStateMachine.png
     """
 
-    Created = State("Created", initial=True)
-    Failed = State("Failed")
-    Terminating = State("Terminating")
-    PassedEndTime = State("PassedEndTime")
-    Terminated = State("Terminated")
+    Created = State("CREATED", initial=True)
+    Failed = State("FAILED")
+    Terminating = State("TERMINATING")
+    PassedEndTime = State("PASSED_END_TIME")
+    Terminated = State("TERMINATED")
 
     forced_end_notification = Created.to(Failed)
     terminate_request = Created.to(Terminating) | PassedEndTime.to(Terminating) | Failed.to(Terminating)
